@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-# Copyright 2016 Abram Hindle, https://github.com/tywtyw2002, and https://github.com/treedust
+# Copyright 2022 Abram Hindle, Hongwei Wang https://github.com/tywtyw2002, and https://github.com/treedust
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,13 +41,14 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        first_line = list(data.split('\r\n'))[0]
+        return int(list(first_line.split(' '))[1])
 
     def get_headers(self,data):
         return None
 
     def get_body(self, data):
-        return None
+        return (list(data.split('\r\n\r\n')))[1]
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -68,13 +69,51 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+        # code = 500
+        # body = ""
+
+        o = urllib.parse.urlparse(url)
+        host = o.hostname
+        port = o.port if o.port else 80
+        path = o.path if o.path else '/'
+        headers = f"GET {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: Hongwei-W\r\nAccept-Charset: UTF-8\r\nConnection: close\r\n\r\n"
+        self.connect(host, port)
+        self.sendall(headers)
+
+        reply = self.recvall(self.socket)
+        
+        code = self.get_code(reply)
+        body = self.get_body(reply)
+
+        self.close()
+
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        # code = 500
+        # body = ""
+        o = urllib.parse.urlparse(url)
+        host = o.hostname
+        port = o.port if o.port else 80
+        path = o.path if o.path else '/'
+        args = args if args else ''
+
+        form = urllib.parse.urlencode(args)
+        form_len = str(len(form.encode('utf-8')))
+
+        headers = f"POST {path} HTTP/1.1\r\nHost: {path}\r\nUser-Agent: Hongwei-W\r\nAccept-Charset: UTF-8\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {form_len}\r\nConnection: close\r\n\r\n"
+
+        self.connect(host, port)
+        self.sendall(headers+form)
+
+        reply = self.recvall(self.socket)
+        
+
+        code = self.get_code(reply)
+        body = self.get_body(reply)
+
+        self.close()
+
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
